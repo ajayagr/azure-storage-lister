@@ -5,3 +5,5 @@ __pycache__/
 .input/
 .output/
 local.settings.json
+
+.python_packages
