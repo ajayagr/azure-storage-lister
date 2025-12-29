@@ -1,13 +1,39 @@
 import azure.functions as func
 import logging
 import os
+import time
+from collections import deque
 from azure.storage.blob import BlobServiceClient
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
+# Simple in-memory rate limiter (per instance)
+# Limit: 100 requests per 60 seconds
+RATE_LIMIT = 100
+WINDOW_SECONDS = 60
+request_history = deque()
+
+def is_rate_limited():
+    now = time.time()
+    # Remove timestamps older than the window
+    while request_history and request_history[0] < now - WINDOW_SECONDS:
+        request_history.popleft()
+    
+    if len(request_history) >= RATE_LIMIT:
+        return True
+    
+    request_history.append(now)
+    return False
 
 @app.route(route="list_files")
 def list_files(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
+
+    if is_rate_limited():
+        return func.HttpResponse(
+            "Rate limit exceeded. Try again later.",
+            status_code=429
+        )
 
     # Get connection string from environment variables
     # Priority: TARGET_STORAGE_CONNECTION_STRING > AzureWebJobsStorage
@@ -17,12 +43,6 @@ def list_files(req: func.HttpRequest) -> func.HttpResponse:
         
     container_name = req.params.get('container')
 
-    if not connect_str:
-        return func.HttpResponse(
-            "AzureWebJobsStorage environment variable not set.",
-            status_code=500
-        )
-    
     if not container_name:
          # Try to get from body
         try:
@@ -36,6 +56,12 @@ def list_files(req: func.HttpRequest) -> func.HttpResponse:
     # Default to file-container if not provided
     if not container_name:
         container_name = "file-container"
+
+    if not connect_str:
+        return func.HttpResponse(
+            "AzureWebJobsStorage environment variable not set.",
+            status_code=500
+        )
 
     try:
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
