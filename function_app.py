@@ -29,11 +29,9 @@ def list_files(req: func.HttpRequest) -> func.HttpResponse:
         if req_body:
              container_name = req_body.get('container')
 
+    # Default to file-container if not provided
     if not container_name:
-        return func.HttpResponse(
-            "Please pass a container name on the query string or in the request body",
-            status_code=400
-        )
+        container_name = "file-container"
 
     try:
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
