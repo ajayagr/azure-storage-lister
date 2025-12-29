@@ -10,7 +10,11 @@ def list_files(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
     # Get connection string from environment variables
-    connect_str = os.getenv('AzureWebJobsStorage')
+    # Priority: TARGET_STORAGE_CONNECTION_STRING > AzureWebJobsStorage
+    connect_str = os.getenv('TARGET_STORAGE_CONNECTION_STRING')
+    if not connect_str:
+        connect_str = os.getenv('AzureWebJobsStorage')
+        
     container_name = req.params.get('container')
 
     if not connect_str:
