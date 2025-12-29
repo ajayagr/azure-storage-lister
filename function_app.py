@@ -197,7 +197,8 @@ def style_images(req: func.HttpRequest) -> func.HttpResponse:
                         # Assumes: POST multipart with 'file' and 'prompt'
                         files = {'file': (file_name, image_data)}
                         data = {'prompt': prompt}
-                        headers = {'Authorization': api_key} # Key in header
+                        # Azure OpenAI uses 'api-key' header for resource keys
+                        headers = {'api-key': api_key}
                         
                         resp = requests.post(endpoint_url, files=files, data=data, headers=headers)
                         
